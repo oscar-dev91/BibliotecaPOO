@@ -1,0 +1,160 @@
+-- Crear la base de datos
+CREATE DATABASE biblioteca;
+
+-- Usar la base de datos
+USE biblioteca;
+
+-- Tabla de Usuarios
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    apellido VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    telefono VARCHAR(20),
+    direccion VARCHAR(200),
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    estado ENUM('Activo', 'Inactivo') DEFAULT 'Activo'
+);
+
+-- Tabla de Elementos base (Libros, Revistas, DVDs)
+CREATE TABLE elementos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    titulo VARCHAR(200) NOT NULL,
+    autor VARCHAR(100) NOT NULL,
+    ano_publicacion INT,
+    tipo ENUM('Libro', 'Revista', 'DVD') NOT NULL,
+    estado ENUM('Disponible', 'Prestado', 'Reservado') DEFAULT 'Disponible',
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de Libros (Extensión de elementos)
+CREATE TABLE libros (
+    elemento_id INT PRIMARY KEY,
+    isbn VARCHAR(20) UNIQUE,
+    numero_paginas INT,
+    genero VARCHAR(50),
+    editorial VARCHAR(100),
+    FOREIGN KEY (elemento_id) REFERENCES elementos(id) ON DELETE CASCADE
+);
+
+-- Tabla de Revistas (Extensión de elementos)
+CREATE TABLE revistas (
+    elemento_id INT PRIMARY KEY,
+    numero_revista INT,
+    tema VARCHAR(50),
+    periodicidad ENUM('Semanal', 'Mensual', 'Trimestral', 'Anual'),
+    FOREIGN KEY (elemento_id) REFERENCES elementos(id) ON DELETE CASCADE
+);
+
+-- Tabla de DVDs (Extensión de elementos)
+CREATE TABLE dvds (
+    elemento_id INT PRIMARY KEY,
+    duracion INT,
+    categoria VARCHAR(50),
+    formato ENUM('DVD', 'Blu-ray', 'Digital'),
+    FOREIGN KEY (elemento_id) REFERENCES elementos(id) ON DELETE CASCADE
+);
+
+-- Tabla de Préstamos
+CREATE TABLE prestamos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    elemento_id INT NOT NULL,
+    fecha_prestamo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_devolucion_esperada DATE NOT NULL,
+    fecha_devolucion_real TIMESTAMP NULL,
+    estado ENUM('Activo', 'Devuelto', 'Vencido') DEFAULT 'Activo',
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+    FOREIGN KEY (elemento_id) REFERENCES elementos(id)
+);
+
+-- Tabla de Reservas
+CREATE TABLE reservas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    elemento_id INT NOT NULL,
+    fecha_reserva TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_reserva_hasta DATE NOT NULL,
+    estado ENUM('Activa', 'Cancelada', 'Completada') DEFAULT 'Activa',
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+    FOREIGN KEY (elemento_id) REFERENCES elementos(id)
+);
+
+-- Índices para mejorar el rendimiento
+CREATE INDEX idx_usuario_email ON usuarios(email);
+CREATE INDEX idx_elemento_titulo ON elementos(titulo);
+CREATE INDEX idx_prestamo_usuario ON prestamos(usuario_id);
+CREATE INDEX idx_prestamo_elemento ON prestamos(elemento_id);
+
+-- Procedimiento almacenado para registrar un préstamo
+DELIMITER //
+CREATE PROCEDURE registrar_prestamo(
+    IN p_usuario_id INT,
+    IN p_elemento_id INT,
+    IN p_dias_prestamo INT
+)
+BEGIN
+    DECLARE v_estado_elemento ENUM('Disponible', 'Prestado', 'Reservado');
+
+    -- Verificar estado del elemento
+    SELECT estado INTO v_estado_elemento
+    FROM elementos
+    WHERE id = p_elemento_id;
+
+    -- Validar si el elemento está disponible
+    IF v_estado_elemento = 'Disponible' THEN
+        -- Insertar nuevo préstamo
+        INSERT INTO prestamos (
+            usuario_id,
+            elemento_id,
+            fecha_devolucion_esperada
+        ) VALUES (
+            p_usuario_id,
+            p_elemento_id,
+            DATE_ADD(CURRENT_DATE, INTERVAL p_dias_prestamo DAY)
+        );
+
+        -- Actualizar estado del elemento
+        UPDATE elementos
+        SET estado = 'Prestado'
+        WHERE id = p_elemento_id;
+
+        SELECT 'Préstamo registrado exitosamente' AS mensaje;
+    ELSE
+        SELECT 'El elemento no está disponible' AS mensaje;
+    END IF;
+END //
+DELIMITER ;
+
+-- Trigger para manejar devolución de préstamos
+DELIMITER //
+CREATE TRIGGER after_devolucion_prestamo
+AFTER UPDATE ON prestamos
+FOR EACH ROW
+BEGIN
+    IF NEW.fecha_devolucion_real IS NOT NULL THEN
+        UPDATE elementos
+        SET estado = 'Disponible'
+        WHERE id = NEW.elemento_id;
+    END IF;
+END //
+DELIMITER ;
+
+-- Vista de préstamos activos
+CREATE VIEW vista_prestamos_activos AS
+SELECT
+    p.id AS prestamo_id,
+    u.nombre,
+    u.apellido,
+    e.titulo,
+    e.tipo,
+    p.fecha_prestamo,
+    p.fecha_devolucion_esperada
+FROM
+    prestamos p
+JOIN
+    usuarios u ON p.usuario_id = u.id
+JOIN
+    elementos e ON p.elemento_id = e.id
+WHERE
+    p.estado = 'Activo';
