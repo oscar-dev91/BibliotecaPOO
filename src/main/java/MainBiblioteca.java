@@ -41,10 +41,14 @@ public class MainBiblioteca {
         DVD dvdfelho = new DVD("Interstellar", "Christopher Nolan", 2014, 169, "Ciencia ficción épica / Drama espacial");
 
         // Agregar elementos a la biblioteca usando métodos específicos
+
         libro1.registrarLibro(biblioteca);
         libro2.registrarLibro(biblioteca);
         revista1.registrarRevista(biblioteca);
         dvd1.registrarDVD(biblioteca);
+        libroOscar.registrarLibro(biblioteca);
+        revistaOscar.registrarRevista(biblioteca);
+        dvdOscar.registrarDVD(biblioteca);
 
         // Mostrar todos los elementos
         System.out.println("Elementos en la biblioteca:");
@@ -52,6 +56,7 @@ public class MainBiblioteca {
 
         // Prestar un elemento
         libro1.prestar();
+        dvdOscar.prestar();
 
         // Mostrar elementos disponibles
         System.out.println("\nElementos disponibles:");
