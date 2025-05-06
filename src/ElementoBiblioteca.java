@@ -35,6 +35,9 @@ public abstract class ElementoBiblioteca {
             System.out.println(titulo + " no estaba prestado.");
         }
     }
+
+    public abstract Object[] getData();  // Método abstracto para devolver los datos de la clase
+    public abstract String getTipo();    // Método para obtener el tipo (Libro, DVD, Revista)
 }
 
 

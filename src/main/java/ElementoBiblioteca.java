@@ -60,4 +60,21 @@ public abstract class ElementoBiblioteca {
     public boolean estaPrestado() {
         return prestado;
     }
+
+    // Setters para modificar los atributos de la clase
+    public void setTitulo(String titulo) {
+        this.titulo = titulo;
+    }
+
+    public void setAutor(String autor) {
+        this.autor = autor;
+    }
+
+    public void setAnoPublicacion(int anioPublicacion) {
+        this.anioPublicacion = anioPublicacion;
+    }
+
+    public void setPrestado(boolean prestado) {
+        this.prestado = prestado;
+    }
 }
